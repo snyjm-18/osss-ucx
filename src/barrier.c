@@ -8,6 +8,7 @@
 
 #include "shmemu.h"
 #include "shmemc.h"
+//#include "reductions.c"
 
 #ifdef ENABLE_PSHMEM
 #pragma weak shmem_barrier_all = pshmem_barrier_all
@@ -44,6 +45,7 @@ shmem_barrier_all(void)
 
     SHMEMT_MUTEX_PROTECT(shmemc_barrier_all());
 }
+
 
 
 #ifdef ENABLE_PSHMEM

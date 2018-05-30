@@ -154,8 +154,8 @@ shmemc_context_fill(long options, shmemc_context_h ch)
     else {
         wkpm.thread_mode = UCS_THREAD_MODE_MULTI;
     }
-
     s = ucp_worker_create(proc.comms.ucx_ctxt, &wkpm, &(ch->w));
+    
     if (s != UCS_OK) {
         return 1;
         /* NOT REACHED */

@@ -57,3 +57,11 @@ shmemc_finalize(void)
 
     shmemc_ucx_finalize();
 }
+
+void
+shmemc_init_am(void)
+{
+    shmemc_ucx_init_am();
+}
+
+

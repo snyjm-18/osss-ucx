@@ -150,6 +150,28 @@ shmem_init(void)
     (void) init_thread_helper(SHMEM_THREAD_SINGLE, NULL);
 }
 
+/* AM Stuff
+ *
+ *
+ */
+void
+shmem_init_am()
+{
+    proc.am_fence.pWrk = NULL; /* so we know to make memory regions */
+    shmemc_init_am();
+}
+
+void 
+shmem_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
+{
+    shmemc_put_am(dest, nelems, elem_size, pe, id, args, arg_length);
+}
+
+shmem_am_handle_t
+shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
+    return shmemc_insert_cb(type, cb);
+}
+
 /*
  * finish SHMEM portion of program, release resources
  */

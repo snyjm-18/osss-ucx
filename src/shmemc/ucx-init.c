@@ -17,9 +17,11 @@
 #include <stdlib.h>             /* getenv */
 #include <string.h>
 #include <strings.h>
+#include <poll.h>
+#include <pthread.h>
 
 #include <ucp/api/ucp.h>
-
+#include <uct/api/uct.h>
 /*
  * worker tables
  */
@@ -114,7 +116,6 @@ register_globals()
     mp.flags =
         UCP_MEM_MAP_ALLOCATE |
         UCP_MEM_MAP_FIXED;
-
     globals->base = g_base;
     globals->end  = globals->base + len;
     globals->len  = len;
@@ -444,6 +445,9 @@ shmemc_ucx_init(void)
 
     /* don't need config info any more */
     ucp_config_release(proc.comms.ucx_cfg);
+    
+    /* setting uct_eps to NULL in case we do not use AM */
+    proc.comms.am_eps = NULL;
 
     /* set up globalexit handler */
     shmemc_globalexit_init();
@@ -474,8 +478,132 @@ shmemc_ucx_finalize(void)
 
     shmemc_broadcast_finalize();
     shmemc_barrier_finalize();
+    
+    if(proc.comms.am_eps){
+        free(proc.comms.am_eps);
+    }
 
     shmemc_env_finalize();
 
     ucp_cleanup(proc.comms.ucx_ctxt);
+}
+
+/* input: 
+ *  end point index
+ * output : 
+ *  iface : uct iface 
+ */
+
+static ucs_status_t 
+active_put(void *arg, void *data, size_t length, unsigned flags)
+{
+    int num_elems;
+    size_t elem_size;
+    void *dest;
+    size_t arg_offset = sizeof(uint64_t) + offsetof(shmemc_am_data_t, payload);
+    void *args;
+
+    dest = *(void **)data;
+    shmemc_am_data_t *payload = (shmemc_am_data_t *)((char *)data + sizeof(uint64_t));
+    
+    elem_size = payload->size;
+    num_elems = payload->nelems;
+    
+    void *test = (void *)(((char *)data) + arg_offset);
+
+    for(int i = 0; i < num_elems; i++){
+        proc.put_cbs[payload->handle](dest, test, i);
+        dest = (char *)dest + elem_size;
+    }
+    proc.received_ams++;
+
+    return UCS_OK;
+}
+
+static ucs_status_t
+active_get(void *arg, void *data, size_t length, unsigned flags)
+{
+/*
+    int num_elems;
+    size_t elem_size;
+    void *dest;
+    int target;
+    ucp_ep_h ep;
+
+    dest = *(void **)data;
+    shmemc_get_am_data_t *payload = (int *)((char *)data + sizeof(uint64_t));
+
+    target = payload->requester;
+    elem_size = payload->am_data.size;
+    num_elems = payload->am_data.nelems;
+    for(int i = 0; i < num_elems; i++){
+      proc.get_cbs[payload->am_data.handle](dest, elem_size);
+      dest = (char *)dest + elem_size;
+    }
+
+    proc.received_ams++;
+    //put data or send message back to requester
+    
+    dest = *(uint64_t *)data;
+    ep = proc.comms.eps[target];
+    ucp_tag_send_sync_nb(ep, dest, elem_size * num_elems, datatype, 0, NULL);
+*/
+}
+
+void *am_handler(void *arg){
+    while(poll(&(proc.am_fd), 1, -1) > -1){
+        ucp_worker_progress(shmemc_default_context.w);
+        ucp_worker_arm(shmemc_default_context.w);
+    }
+}
+
+/* ucx am stuff 
+ *
+ *
+ */
+void
+shmemc_ucx_init_am()
+{
+    uct_iface_h iface;
+    uct_ep_h uct_ep;
+    ucp_ep_h ucp_ep;
+    ucs_status_t status;
+    //ucp_worker_attr_t *attr = malloc(sizeof(ucp_worker_attr_t));
+    int fd;
+    
+    int args;
+    uint8_t put_id, get_id;
+
+    put_id = 31; //TODO change id
+    get_id = 30;
+    args = 0; //TODO what to do about arguments
+    proc.comms.am_eps = malloc(sizeof(uct_ep_h) * proc.nranks);
+    for(int i = 0; i < proc.nranks; i++){
+        ucp_ep = proc.comms.eps[i];
+        uct_ep = ucp_ep_get_am_uct_ep_usr(ucp_ep);
+        iface = uct_ep->iface;
+        uct_iface_set_am_handler(iface, put_id, active_put, &args, UCT_CB_FLAG_ASYNC);
+//        uct_iface_set_am_handler(iface, get_id, active_get, &args, UCT_CB_FLAG_ASYNC);
+    
+        proc.comms.am_eps[i] = uct_ep;
+    }
+    //ucp_worker_get_efd(SHMEM_CTX_DEFAULT, &fd);
+    proc.am_fd.events = POLLIN;
+    proc.am_fd.fd = fd;
+    while(ucp_worker_arm(shmemc_default_context.w) == UCS_ERR_BUSY){
+      ucp_worker_progress(shmemc_default_context.w);
+    }
+    //ucp_worker_query(shmemc_default_context.w, attr);
+    //printf("addr : %p thread : %d multi : %d \n", &shmemc_default_context, attr->thread_mode, UCS_THREAD_MODE_MULTI);
+    //pthread_create(&(proc.am_tid), NULL, am_handler, NULL);
+    
+    /*
+    for(int i = 0; i < proc.nranks; i++){
+      ucp_ep = proc.comms.eps[i];
+      uct_ep = ucp_ep_get_am_uct_ep_usr(ucp_ep);
+
+    }
+    */
+    proc.next_am_index = 0;
+
 }

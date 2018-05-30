@@ -5,9 +5,14 @@
 
 #include "boolean.h"
 #include "threading.h"
+#include "shmemc-ucx.h"
 
 #include <sys/types.h>
 #include <ucp/api/ucp.h>
+#include <poll.h>
+#include <pthread.h>
+
+#define MAX_CBS 10
 
 /*
  * -- for UCX --------------------------------------------------------
@@ -91,6 +96,7 @@ typedef struct comms_info {
     ucp_context_h ucx_ctxt;     /* local communication context */
     ucp_config_t *ucx_cfg;      /* local config */
     ucp_ep_h *eps;              /* nranks endpoints (1 of which is mine) */
+    uct_ep_h *am_eps;           /* nranks for uct endpoints for active message */
 
     worker_info_t *xchg_wrkr_info; /* nranks worker info exchanged */
 
@@ -134,7 +140,7 @@ typedef enum shmemc_coll {
 #define SHMEMC_COLL_DEFAULT SHMEMC_COLL_TREE
 
 typedef struct heapinfo {
-    size_t nheaps;              /* how many heaps reuqested */
+    size_t nheaps;              /* how many heaps requested */
     size_t *heapsize;           /* array of their sizes */
 } heapinfo_t;
 
@@ -170,6 +176,17 @@ typedef struct shmemc_team {
     size_t nmembers;
 } shmemc_team_t;
 
+typedef struct shmemc_am_fence_mem{
+    int *pWrk;
+    long *pSync;
+    int *total_ams;
+    int *local_ams;
+} shmemc_am_fence_mem_t;
+
+/* we need a global AM data structure and a active_message file TODO */
+typedef unsigned shmem_am_handle_t;
+typedef void (*shmem_am_func)(void *elem, void *args, int elem_index);
+
 /*
  * each PE has this state info
  */
@@ -185,6 +202,13 @@ typedef struct thispe_info {
     int npeers;                 /* how many peers */
     shmemc_team_t *teams;       /* PE teams we belong to */
     size_t nteams;              /* how many teams */
+    int sent_ams;               /* how many ams I have sent */
+    int received_ams;           /* how many ams I have received */
+    shmem_am_func put_cbs[MAX_CBS]; /* user callbacks for put active messages */
+    shmem_am_handle_t next_am_index;
+    shmemc_am_fence_mem_t am_fence;  /* symetric memory regions for am fence ops */
+    struct pollfd am_fd;        /* fd for ifaces and ams */
+    pthread_t am_tid;
 } thispe_info_t;
 
 #endif /* ! _THISPE_H */

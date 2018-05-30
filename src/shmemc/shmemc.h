@@ -36,6 +36,28 @@ int shmemc_addr_accessible(const void *addr, int pe);
 
 void shmemc_print_env_vars(FILE *stream, const char *prefix);
 
+/* Active Message Calls
+ *
+ *
+ */
+
+typedef struct shmemc_am_data{
+    int nelems;
+    size_t size;
+    shmem_am_handle_t handle;
+    char payload[0];
+} shmemc_am_data_t;
+
+typedef struct shmemc_get_am_data{
+    shmemc_am_data_t am_data;
+    int requester;
+} shmemc_get_am_data_t;
+
+void shmemc_init_am();
+void shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *arg, size_t arg_length);
+void shmemc_worker_progress();
+shmem_am_handle_t shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb);
+
 /*
  * -- Per-context routines ---------------------------------------------------
  */

@@ -177,7 +177,6 @@ void
 shmemc_barrier(int start, int log2stride, int size, long *pSync)
 {
     shmemc_quiet();
-
     barrier_sync_helper(start, log2stride, size, pSync);
 }
 

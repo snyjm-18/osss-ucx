@@ -12,7 +12,9 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <ucp/api/ucp_def.h>
 #include <ucp/api/ucp.h>
+#include <uct/api/uct.h>
 
 /*
  * -- helpers ----------------------------------------------------------------
@@ -705,6 +707,69 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
     shmemu_assert((s == UCS_OK) || (s == UCS_INPROGRESS),
                   "non-blocking get failed");
  }
+
+/* active message put 
+ */
+void
+shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
+{
+
+    uct_ep_h target_pe;
+    uint64_t header;
+    size_t length;
+    ucp_rkey_h rkey;
+    ucs_status_t status;
+    size_t arg_offset = offsetof(shmemc_am_data_t, payload);
+    char data[arg_offset + arg_length];
+    shmemc_am_data_t *payload;
+    uint8_t uct_id = 31; /*this is based on the am's used by ucp could need to change w/ ucx */
+
+    payload = (shmemc_am_data_t *)(data);
+
+    get_remote_key_and_addr((uint64_t) dest, pe, &rkey, &header); 
+    target_pe = proc.comms.am_eps[pe];
+
+    payload->nelems = nelems;
+    payload->size = elem_size;
+    payload->handle = id;
+    
+    memcpy(data + arg_offset, args, arg_length);
+
+    status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_data_t) + arg_length);
+
+    while(status != UCS_OK && status != UCS_INPROGRESS){
+        if(status == UCS_ERR_NO_RESOURCE){
+            //ucp_worker_progress(shmemc_default_context.w);
+            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_data_t) + arg_length);
+        }
+        if(status == UCS_INPROGRESS){
+            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            //status = ucp_worker_progress(shmemc_default_context.w);
+        }
+    }
+
+    proc.sent_ams++;
+}
+
+shmem_am_handle_t
+shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
+    
+    if(MAX_CBS <= proc.next_am_index){
+      printf("too many proc.next_am_index : %d \n", proc.next_am_index);
+      return -1;
+    }
+
+    if(type == SHMEM_AM_PUT){
+        proc.put_cbs[proc.next_am_index] = cb;
+        return proc.next_am_index++;
+    }
+
+    else{
+        printf("SHMEM_AM_GET is not yet supported \n");
+        return -1;
+    }
+}
 
 /*
  * -- atomics ------------------------------------------------------------
