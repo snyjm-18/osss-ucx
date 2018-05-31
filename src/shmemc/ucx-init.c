@@ -537,8 +537,6 @@ void send_completion(void *data, ucs_status_t status){
 static ucs_status_t
 active_get(void *arg, void *data, size_t length, unsigned flags)
 {
-
-
     int num_elems;
     size_t elem_size;
     void *dest;
