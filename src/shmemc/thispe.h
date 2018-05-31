@@ -205,10 +205,15 @@ typedef struct thispe_info {
     int sent_ams;               /* how many ams I have sent */
     int received_ams;           /* how many ams I have received */
     shmem_am_func put_cbs[MAX_CBS]; /* user callbacks for put active messages */
-    shmem_am_handle_t next_am_index;
+    shmem_am_func get_cbs[MAX_CBS];
+    shmem_am_handle_t next_put_am_index;
+    shmem_am_handle_t next_get_am_index;
     shmemc_am_fence_mem_t am_fence;  /* symetric memory regions for am fence ops */
     struct pollfd am_fd;        /* fd for ifaces and ams */
     pthread_t am_tid;
+    size_t req_size;
+    int sent_am_replys;
+    int recv_am_replys;
 } thispe_info_t;
 
 #endif /* ! _THISPE_H */

@@ -167,6 +167,12 @@ shmem_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t
     shmemc_put_am(dest, nelems, elem_size, pe, id, args, arg_length);
 }
 
+void
+shmem_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
+{
+    shmemc_get_am(dest, src, nelems, elem_size, pe, id, args, arg_length);
+}
+
 shmem_am_handle_t
 shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
     return shmemc_insert_cb(type, cb);

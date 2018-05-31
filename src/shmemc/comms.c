@@ -202,7 +202,6 @@ inline static void
 helper_ctx_progress(shmem_ctx_t ctx)
 {
     shmemc_context_h ch = (shmemc_context_h) ctx;
-
     (void) ucp_worker_progress(ch->w);
 }
 
@@ -713,18 +712,17 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
 void
 shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
 {
-
     uct_ep_h target_pe;
     uint64_t header;
     size_t length;
     ucp_rkey_h rkey;
     ucs_status_t status;
-    size_t arg_offset = offsetof(shmemc_am_data_t, payload);
+    size_t arg_offset = offsetof(shmemc_am_put_data_t, payload);
     char data[arg_offset + arg_length];
-    shmemc_am_data_t *payload;
+    shmemc_am_put_data_t *payload;
     uint8_t uct_id = 31; /*this is based on the am's used by ucp could need to change w/ ucx */
 
-    payload = (shmemc_am_data_t *)(data);
+    payload = (shmemc_am_put_data_t *)(data);
 
     get_remote_key_and_addr((uint64_t) dest, pe, &rkey, &header); 
     target_pe = proc.comms.am_eps[pe];
@@ -735,38 +733,97 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
     
     memcpy(data + arg_offset, args, arg_length);
 
-    status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_data_t) + arg_length);
+    status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
 
     while(status != UCS_OK && status != UCS_INPROGRESS){
         if(status == UCS_ERR_NO_RESOURCE){
-            //ucp_worker_progress(shmemc_default_context.w);
             helper_ctx_progress(SHMEM_CTX_DEFAULT);
-            status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_data_t) + arg_length);
+            status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
         }
         if(status == UCS_INPROGRESS){
             helper_ctx_progress(SHMEM_CTX_DEFAULT);
-            //status = ucp_worker_progress(shmemc_default_context.w);
         }
     }
 
     proc.sent_ams++;
 }
 
+void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
+    struct ucx_context *context = (struct ucx_context *)data;
+    context->completed = 1;
+}
+
+void
+shmemc_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length){
+
+    uct_ep_h target;
+    uint64_t header;
+    size_t length;
+    ucp_rkey_h rkey;
+    ucs_status_t status;
+    struct ucx_context *recv_status;
+    shmemc_am_get_data_t *payload;
+    size_t arg_offset = offsetof(shmemc_am_get_data_t, payload);
+    char data[arg_offset + arg_length];
+    uint8_t uct_id = 30;
+    ucp_tag_recv_info_t recv_info;
+    ucp_tag_t tag = 0;
+    ucp_tag_t mask = ~0;
+
+    payload = (shmemc_am_get_data_t *)(data);
+
+    get_remote_key_and_addr((uint64_t) src, pe, &rkey, &header);
+    target = proc.comms.am_eps[pe];
+
+    payload->requester = proc.rank;
+    payload->nelems = nelems;
+    payload->size = elem_size;
+    payload->handle = id;
+    payload->reply_tag = 1234;
+    memcpy(data + arg_offset, args, arg_length);
+    status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
+
+    while(status != UCS_OK && status != UCS_INPROGRESS){
+        if(status == UCS_ERR_NO_RESOURCE){
+            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
+        }
+        if(status == UCS_INPROGRESS){
+            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+        }
+
+    }
+    recv_status = ucp_tag_recv_nb(shmemc_default_context.w, dest, elem_size * nelems, 
+                                    ucp_dt_make_contig(1), tag, mask, recv_completion);
+
+    if(UCS_PTR_IS_ERR(recv_status)){
+        printf("recv err\n");
+    }
+    while(recv_status->completed == 0){
+        helper_ctx_progress(SHMEM_CTX_DEFAULT);
+    }
+
+    ucp_request_free(recv_status);
+}
+
 shmem_am_handle_t
 shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
     
-    if(MAX_CBS <= proc.next_am_index){
-      printf("too many proc.next_am_index : %d \n", proc.next_am_index);
+    if(MAX_CBS <= proc.next_put_am_index || MAX_CBS <= proc.next_get_am_index){
+      printf("too many proc.next_put_am_index : %d proc.next_get_am_index : %d \n", proc.next_put_am_index, proc.next_get_am_index);
       return -1;
     }
 
     if(type == SHMEM_AM_PUT){
-        proc.put_cbs[proc.next_am_index] = cb;
-        return proc.next_am_index++;
+        proc.put_cbs[proc.next_put_am_index] = cb;
+        return proc.next_put_am_index++;
     }
-
+    else if(type = SHMEM_AM_GET){
+        proc.get_cbs[proc.next_get_am_index] = cb;
+        return proc.next_get_am_index++;
+    }
     else{
-        printf("SHMEM_AM_GET is not yet supported \n");
+        printf("Unrecognized type. Please use SHMEM_AM_PUT or SHMEM_AM_GET \n");
         return -1;
     }
 }

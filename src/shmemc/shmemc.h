@@ -40,22 +40,28 @@ void shmemc_print_env_vars(FILE *stream, const char *prefix);
  *
  *
  */
-
-typedef struct shmemc_am_data{
+typedef struct shmemc_am_put_data{
     int nelems;
     size_t size;
     shmem_am_handle_t handle;
     char payload[0];
-} shmemc_am_data_t;
+} shmemc_am_put_data_t;
 
-typedef struct shmemc_get_am_data{
-    shmemc_am_data_t am_data;
+typedef struct shmemc_am_get_data{
+    unsigned long reply_tag;
     int requester;
-} shmemc_get_am_data_t;
+    int nelems;
+    size_t size;
+    shmem_am_handle_t handle;
+    char payload[0];
+} shmemc_am_get_data_t;
 
+struct ucx_context {
+    int completed;
+};
 void shmemc_init_am();
 void shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *arg, size_t arg_length);
-void shmemc_worker_progress();
+void shmemc_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *arg, size_t arg_length);
 shmem_am_handle_t shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb);
 
 /*
