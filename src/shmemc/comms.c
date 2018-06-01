@@ -712,7 +712,6 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
 void
 shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx)
 {
-    shmemc_context_h context = (shmemc_context_h)ctx;
     uct_ep_h target_pe;
     uint64_t header;
     size_t length;
@@ -738,15 +737,15 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
 
     while(status != UCS_OK && status != UCS_INPROGRESS){
         if(status == UCS_ERR_NO_RESOURCE){
-            helper_ctx_progress(context->w);
+            helper_ctx_progress(ctx);
             status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
         }
         if(status == UCS_INPROGRESS){
-            helper_ctx_progress(context->w);
+            helper_ctx_progress(ctx);
         }
     }
 
-    proc.sent_ams++;
+    proc.am_info.sent_ams++;
 }
 
 void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
@@ -807,18 +806,18 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
 shmem_am_handle_t
 shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
     
-    if(MAX_CBS <= proc.next_put_am_index || MAX_CBS <= proc.next_get_am_index){
-      printf("too many proc.next_put_am_index : %d proc.next_get_am_index : %d \n", proc.next_put_am_index, proc.next_get_am_index);
+    if(MAX_CBS <= proc.am_info.next_put_am_index || MAX_CBS <= proc.am_info.next_get_am_index){
+      printf("too many proc.next_put_am_index : %d proc.next_get_am_index : %d \n", proc.am_info.next_put_am_index, proc.am_info.next_get_am_index);
       return -1;
     }
 
     if(type == SHMEM_AM_PUT){
-        proc.put_cbs[proc.next_put_am_index] = cb;
-        return proc.next_put_am_index++;
+        proc.am_info.put_cbs[proc.am_info.next_put_am_index] = cb;
+        return proc.am_info.next_put_am_index++;
     }
     else if(type = SHMEM_AM_GET){
-        proc.get_cbs[proc.next_get_am_index] = cb;
-        return proc.next_get_am_index++;
+        proc.am_info.get_cbs[proc.am_info.next_get_am_index] = cb;
+        return proc.am_info.next_get_am_index++;
     }
     else{
         printf("Unrecognized type. Please use SHMEM_AM_PUT or SHMEM_AM_GET \n");

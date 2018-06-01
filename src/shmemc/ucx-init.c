@@ -519,10 +519,10 @@ active_put(void *arg, void *data, size_t length, unsigned flags)
     args = (void *)(((char *)data) + arg_offset);
 
     for(int i = 0; i < num_elems; i++){
-        proc.put_cbs[payload->handle](dest, args, i);
+        proc.am_info.put_cbs[payload->handle](dest, args, i);
         dest = (char *)dest + elem_size;
     }
-    proc.received_ams++;
+    proc.am_info.received_ams++;
 
     return UCS_OK;
 }
@@ -530,7 +530,7 @@ active_put(void *arg, void *data, size_t length, unsigned flags)
 /* proc.send_completion may need to be protected by a mutex if we have a thread calling worker_progress */
 void send_completion(void *data, ucs_status_t status){
     struct ucx_context *context = (struct ucx_context *)data;
-    proc.sent_am_replys++;
+    proc.am_info.sent_am_replys++;
     ucp_request_free(context);
 }
 
@@ -556,22 +556,23 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     num_elems = payload->nelems;
     args = (void *)(((char *)data) + arg_offset);
     for(int i = 0; i < num_elems; i++){
-        proc.get_cbs[payload->handle](dest, args, i);
+        proc.am_info.get_cbs[payload->handle](dest, args, i);
         dest = (char *)dest + elem_size;
     }
     dest = *(void **)data;
     ep = proc.comms.eps[target];
     status = ucp_tag_send_sync_nb(ep, dest, elem_size * num_elems, ucp_dt_make_contig(1), 0, send_completion);
     if(UCS_PTR_STATUS(status) == UCS_OK){
-        proc.sent_am_replys++;
+        proc.am_info.sent_am_replys++;
     }
     return UCS_OK;
 }
 
 void *am_handler(void *arg){
-    while(poll(&(proc.am_fd), 1, -1) > -1){
-        ucp_worker_progress(shmemc_default_context.w);
-        ucp_worker_arm(shmemc_default_context.w);
+    shmemc_context_h context = arg;
+    while(poll(&(proc.am_info.am_fd), 1, -1) > -1){
+        ucp_worker_progress(context->w);
+        ucp_worker_arm(context->w);
     }
 }
 
@@ -593,7 +594,8 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     int args;
     uint8_t put_id, get_id;
     
-    put_id = 31; //TODO change id
+    put_id = 31; //XXX These may have to change as UCP changes. These are currently available but 
+                  //may not be in the future.
     get_id = 30;
     args = 0; //TODO what to do about arguments
     proc.comms.am_eps = malloc(sizeof(uct_ep_h) * proc.nranks);
@@ -606,16 +608,18 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
         proc.comms.am_eps[i] = uct_ep;
     }
     ucp_worker_get_efd(context->w, &fd);
-    proc.am_fd.events = POLLIN;
-    proc.am_fd.fd = fd;
+    proc.am_info.am_fd.events = POLLIN;
+    proc.am_info.am_fd.fd = fd;
     while(ucp_worker_arm(context->w) == UCS_ERR_BUSY){
         ucp_worker_progress(context->w);
     }
-    //pthread_create(&(proc.am_tid), NULL, am_handler, NULL);
+    //pthread_create(&(proc.am_tid), NULL, am_handler, ctx);
+    
+    //TODO look into removing this
     attr.field_mask = UCP_ATTR_FIELD_REQUEST_SIZE;
     status = ucp_context_query(proc.comms.ucx_ctxt, &attr);
-    proc.req_size = attr.request_size;
+    proc.am_info.req_size = attr.request_size;
 
-    proc.next_put_am_index = 0;
-    proc.next_get_am_index = 0;
+    proc.am_info.next_put_am_index = 0;
+    proc.am_info.next_get_am_index = 0;
 }

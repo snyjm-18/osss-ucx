@@ -157,7 +157,7 @@ shmem_init(void)
 void
 shmem_init_am()
 {
-    proc.am_fence.pWrk = NULL; /* so we know to make memory regions */
+    proc.am_info.am_fence.pWrk = NULL; /* so we know to make memory regions */
     shmemc_init_am();
 }
 
