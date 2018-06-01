@@ -749,6 +749,7 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
 void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
     struct ucx_context *context = (struct ucx_context *)data;
     context->completed = 1;
+    proc.am_info.received_ams++; //XXX this will have to be protected w/ multiple threads
 }
 
 shmem_get_am_nb_handle_t
@@ -799,6 +800,7 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     if(UCS_PTR_IS_ERR(recv_status)){
         printf("recv err\n");
     }
+    proc.am_info.sent_ams++;
     return recv_status;
 }
 
