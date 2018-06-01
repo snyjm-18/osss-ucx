@@ -161,6 +161,25 @@ shmem_init_am()
     shmemc_init_am();
 }
 
+void
+shmem_get_am_wait(shmem_get_am_nb_handle_t handle)
+{
+    while(!handle->completed){
+        shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
+    }
+    ucp_request_free(handle);
+}
+
+int
+shmem_get_am_test(shmem_get_am_nb_handle_t handle)
+{
+    int ret_val = handle->completed;
+    if(handle->completed){
+        ucp_request_free(handle);
+    }
+    return ret_val;
+}
+
 void 
 shmem_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
 {
@@ -170,7 +189,14 @@ shmem_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t
 void
 shmem_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
 {
-    shmemc_get_am(dest, src, nelems, elem_size, pe, id, args, arg_length);
+    shmem_get_am_nb_handle_t wait_handle = shmemc_get_am_nb(dest, src, nelems, elem_size, pe, id, args, arg_length);
+    shmem_get_am_wait(wait_handle);
+}
+
+shmem_get_am_nb_handle_t
+shmem_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
+{
+    return shmemc_get_am_nb(dest, src, nelems, elem_size, pe, id, args, arg_length);
 }
 
 shmem_am_handle_t

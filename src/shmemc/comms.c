@@ -753,8 +753,8 @@ void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info)
     context->completed = 1;
 }
 
-void
-shmemc_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length){
+shmem_get_am_nb_handle_t
+shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length){
 
     uct_ep_h target;
     uint64_t header;
@@ -779,7 +779,7 @@ shmemc_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem
     payload->nelems = nelems;
     payload->size = elem_size;
     payload->handle = id;
-    payload->reply_tag = 1234;
+    payload->reply_tag = 1234; //TODO figure out best way to figure out these tags
     memcpy(data + arg_offset, args, arg_length);
     status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
 
@@ -795,10 +795,12 @@ shmemc_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem
     }
     recv_status = ucp_tag_recv_nb(shmemc_default_context.w, dest, elem_size * nelems, 
                                     ucp_dt_make_contig(1), tag, mask, recv_completion);
-
+    
     if(UCS_PTR_IS_ERR(recv_status)){
         printf("recv err\n");
     }
+    return recv_status;
+
     while(recv_status->completed == 0){
         helper_ctx_progress(SHMEM_CTX_DEFAULT);
     }
