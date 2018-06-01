@@ -800,12 +800,6 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
         printf("recv err\n");
     }
     return recv_status;
-
-    while(recv_status->completed == 0){
-        helper_ctx_progress(SHMEM_CTX_DEFAULT);
-    }
-
-    ucp_request_free(recv_status);
 }
 
 shmem_am_handle_t
