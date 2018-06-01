@@ -733,15 +733,13 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
     
     memcpy(data + arg_offset, args, arg_length);
 
+    /* If this returns UCS_OK I think it is okay the leave the function and let data die but the documentation is unclear */
     status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
 
-    while(status != UCS_OK && status != UCS_INPROGRESS){
+    while(status != UCS_OK){
         if(status == UCS_ERR_NO_RESOURCE){
             helper_ctx_progress(ctx);
             status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
-        }
-        if(status == UCS_INPROGRESS){
-            helper_ctx_progress(ctx);
         }
     }
 
