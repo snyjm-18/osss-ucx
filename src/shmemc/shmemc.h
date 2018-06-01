@@ -59,9 +59,17 @@ typedef struct shmemc_am_get_data{
 struct ucx_context {
     int completed;
 };
-void shmemc_init_am();
-void shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *arg, size_t arg_length);
-shmem_get_am_nb_handle_t  shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *arg, size_t arg_length);
+void shmemc_init_am(void);
+void shmemc_put_am(void *dest, 
+                   int nelems, size_t elem_size, 
+                   int pe, shmem_am_handle_t index, 
+                   void *arg, size_t arg_length,
+                   shmem_ctx_t ctx);
+shmem_get_am_nb_handle_t  shmemc_get_am_nb(void *dest, void *src, 
+                                           int nelems, size_t elem_size, 
+                                           int pe, shmem_am_handle_t index, 
+                                           void *arg, size_t arg_length, 
+                                           shmem_ctx_t ctx);
 shmem_am_handle_t shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb);
 
 /*

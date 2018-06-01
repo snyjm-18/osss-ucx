@@ -6,7 +6,7 @@
 void shmemc_ucx_init(void);
 void shmemc_ucx_finalize(void);
 
-void shmemc_ucx_init_am();
+void shmemc_ucx_init_am(shmem_ctx_t ctx);
 
 void shmemc_ucx_make_remote_endpoints(void);
 

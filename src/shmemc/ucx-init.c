@@ -531,7 +531,7 @@ active_put(void *arg, void *data, size_t length, unsigned flags)
 void send_completion(void *data, ucs_status_t status){
     struct ucx_context *context = (struct ucx_context *)data;
     proc.sent_am_replys++;
-    ucp_request_release(context);
+    ucp_request_free(context);
 }
 
 static ucs_status_t
@@ -556,8 +556,8 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     num_elems = payload->nelems;
     args = (void *)(((char *)data) + arg_offset);
     for(int i = 0; i < num_elems; i++){
-      proc.get_cbs[payload->handle](dest, args, i);
-      dest = (char *)dest + elem_size;
+        proc.get_cbs[payload->handle](dest, args, i);
+        dest = (char *)dest + elem_size;
     }
     dest = *(void **)data;
     ep = proc.comms.eps[target];
@@ -580,8 +580,9 @@ void *am_handler(void *arg){
  *
  */
 void
-shmemc_ucx_init_am()
+shmemc_ucx_init_am(shmem_ctx_t ctx)
 {
+    shmemc_context_h context = (shmemc_context_h)ctx;
     uct_iface_h iface;
     uct_ep_h uct_ep;
     ucp_ep_h ucp_ep;
@@ -604,11 +605,11 @@ shmemc_ucx_init_am()
         uct_iface_set_am_handler(iface, get_id, active_get, &args, UCT_CB_FLAG_ASYNC);
         proc.comms.am_eps[i] = uct_ep;
     }
-    ucp_worker_get_efd(shmemc_default_context.w, &fd);
+    ucp_worker_get_efd(context->w, &fd);
     proc.am_fd.events = POLLIN;
     proc.am_fd.fd = fd;
-    while(ucp_worker_arm(shmemc_default_context.w) == UCS_ERR_BUSY){
-      ucp_worker_progress(shmemc_default_context.w);
+    while(ucp_worker_arm(context->w) == UCS_ERR_BUSY){
+        ucp_worker_progress(context->w);
     }
     //pthread_create(&(proc.am_tid), NULL, am_handler, NULL);
     attr.field_mask = UCP_ATTR_FIELD_REQUEST_SIZE;

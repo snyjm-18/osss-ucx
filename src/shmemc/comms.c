@@ -710,8 +710,9 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
 /* active message put 
  */
 void
-shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
+shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx)
 {
+    shmemc_context_h context = (shmemc_context_h)ctx;
     uct_ep_h target_pe;
     uint64_t header;
     size_t length;
@@ -737,11 +738,11 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
 
     while(status != UCS_OK && status != UCS_INPROGRESS){
         if(status == UCS_ERR_NO_RESOURCE){
-            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            helper_ctx_progress(context->w);
             status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
         }
         if(status == UCS_INPROGRESS){
-            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            helper_ctx_progress(context->w);
         }
     }
 
@@ -754,8 +755,9 @@ void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info)
 }
 
 shmem_get_am_nb_handle_t
-shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length){
-
+shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx){
+  
+    shmemc_context_h context = (shmemc_context_h)ctx;
     uct_ep_h target;
     uint64_t header;
     size_t length;
@@ -785,15 +787,15 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
 
     while(status != UCS_OK && status != UCS_INPROGRESS){
         if(status == UCS_ERR_NO_RESOURCE){
-            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            helper_ctx_progress(ctx);
             status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
         }
         if(status == UCS_INPROGRESS){
-            helper_ctx_progress(SHMEM_CTX_DEFAULT);
+            helper_ctx_progress(ctx);
         }
 
     }
-    recv_status = ucp_tag_recv_nb(shmemc_default_context.w, dest, elem_size * nelems, 
+    recv_status = ucp_tag_recv_nb(context->w, dest, elem_size * nelems, 
                                     ucp_dt_make_contig(1), tag, mask, recv_completion);
     
     if(UCS_PTR_IS_ERR(recv_status)){

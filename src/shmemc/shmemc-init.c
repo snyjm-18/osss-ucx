@@ -61,7 +61,7 @@ shmemc_finalize(void)
 void
 shmemc_init_am(void)
 {
-    shmemc_ucx_init_am();
+    shmemc_ucx_init_am(SHMEM_CTX_DEFAULT);
 }
 
 
