@@ -200,6 +200,7 @@ typedef struct am_info{
     size_t req_size;
     int sent_am_replys;
     int recv_am_replys;
+    uint64_t next_get_tag; /*next get tag for active messages */
 } am_info_t;
 
 /*

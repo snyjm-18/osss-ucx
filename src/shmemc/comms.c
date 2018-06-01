@@ -766,7 +766,7 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     char data[arg_offset + arg_length];
     uint8_t uct_id = 30;
     ucp_tag_recv_info_t recv_info;
-    ucp_tag_t tag = 0;
+    ucp_tag_t tag = proc.am_info.next_get_tag;;
     ucp_tag_t mask = ~0;
 
     payload = (shmemc_am_get_data_t *)(data);
@@ -778,7 +778,8 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     payload->nelems = nelems;
     payload->size = elem_size;
     payload->handle = id;
-    payload->reply_tag = 1234; //TODO figure out best way to figure out these tags
+    payload->reply_tag = tag; //TODO figure out best way to figure out these tags
+    proc.am_info.next_get_tag++; // okay with this over flowing, if we have more than unsigned long outstanding gets...
     memcpy(data + arg_offset, args, arg_length);
     status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
 

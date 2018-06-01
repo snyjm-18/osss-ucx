@@ -561,7 +561,7 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     }
     dest = *(void **)data;
     ep = proc.comms.eps[target];
-    status = ucp_tag_send_sync_nb(ep, dest, elem_size * num_elems, ucp_dt_make_contig(1), 0, send_completion);
+    status = ucp_tag_send_nb(ep, dest, elem_size * num_elems, ucp_dt_make_contig(1), reply_tag, send_completion);
     if(UCS_PTR_STATUS(status) == UCS_OK){
         proc.am_info.sent_am_replys++;
     }
@@ -619,7 +619,7 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     attr.field_mask = UCP_ATTR_FIELD_REQUEST_SIZE;
     status = ucp_context_query(proc.comms.ucx_ctxt, &attr);
     proc.am_info.req_size = attr.request_size;
-
+    proc.am_info.next_get_tag = 0;
     proc.am_info.next_put_am_index = 0;
     proc.am_info.next_get_am_index = 0;
 }
