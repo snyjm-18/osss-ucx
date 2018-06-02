@@ -309,6 +309,7 @@ shmem_fence_am(void)
     
     /* if we haven't make our shared space for this reduction */
     /* maybe do this at start up */ 
+    /* Need to free this memory */
     if(!proc.am_info.am_fence.pWrk){
         proc.am_info.am_fence.pWrk = shmem_malloc(sizeof(int) * SHMEM_REDUCE_MIN_WRKDATA_SIZE);
         proc.am_info.am_fence.pSync = shmem_malloc(sizeof(long) * SHMEM_REDUCE_SYNC_SIZE);

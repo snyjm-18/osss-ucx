@@ -84,6 +84,19 @@ extern "C"
      */
     void shmem_init(void);
 
+
+
+    void shmem_init_am();
+    void shmem_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t index, void *args, size_t arg_length);
+
+    void shmem_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length);
+    shmem_get_am_nb_handle_t shmem_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, 
+                                               shmem_am_handle_t id, void *args, size_t arg_length);
+    void shmem_get_am_wait(shmem_get_am_nb_handle_t handle);
+    int shmem_get_am_test(shmem_get_am_nb_handle_t handle);
+
+    void shmem_fence_am();
+    shmem_am_handle_t shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb);   
     /**
      * @brief initializes the OpenSHMEM environment on the calling PE
      * and requests a threading support level

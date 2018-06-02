@@ -540,7 +540,6 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     int num_elems;
     size_t elem_size;
     void *dest;
-    void *orig_dest;
     int target;
     ucp_ep_h ep;
     void *args;
@@ -548,7 +547,6 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     unsigned long reply_tag;
     size_t arg_offset = sizeof(uint64_t) + offsetof(shmemc_am_get_data_t, payload);
     dest = *(void **)data;
-    orig_dest = dest;
     shmemc_am_get_data_t *payload = (shmemc_am_get_data_t *)((char *)data + sizeof(uint64_t));
     target = payload->requester;
     reply_tag = payload->reply_tag;
