@@ -167,6 +167,7 @@ shmem_get_am_wait(shmem_get_am_nb_handle_t handle)
     while(!handle->completed){
         shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
     }
+    handle->completed = 0;
     ucp_request_free(handle);
 }
 
