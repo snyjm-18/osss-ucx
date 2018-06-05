@@ -70,7 +70,7 @@ shmem_get_am_nb_handle_t  shmemc_get_am_nb(void *dest, void *src,
                                            int pe, shmem_am_handle_t index, 
                                            void *arg, size_t arg_length, 
                                            shmem_ctx_t ctx);
-shmem_am_handle_t shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb);
+shmem_am_handle_t shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb, void *cb_context);
 
 /*
  * -- Per-context routines ---------------------------------------------------

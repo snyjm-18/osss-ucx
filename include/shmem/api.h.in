@@ -96,7 +96,7 @@ extern "C"
     int shmem_get_am_test(shmem_get_am_nb_handle_t handle);
 
     void shmem_fence_am();
-    shmem_am_handle_t shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb);   
+    shmem_am_handle_t shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb, void *cb_context);   
     /**
      * @brief initializes the OpenSHMEM environment on the calling PE
      * and requests a threading support level

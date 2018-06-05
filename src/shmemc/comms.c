@@ -805,7 +805,7 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
 }
 
 shmem_am_handle_t
-shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
+shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb, void *cb_context){
     
     if(MAX_CBS <= proc.am_info.next_put_am_index || MAX_CBS <= proc.am_info.next_get_am_index){
       printf("too many proc.next_put_am_index : %d proc.next_get_am_index : %d \n", proc.am_info.next_put_am_index, proc.am_info.next_get_am_index);
@@ -814,10 +814,12 @@ shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
 
     if(type == SHMEM_AM_PUT){
         proc.am_info.put_cbs[proc.am_info.next_put_am_index] = cb;
+        proc.am_info.put_contexts[proc.am_info.next_put_am_index] = cb_context;
         return proc.am_info.next_put_am_index++;
     }
     else if(type = SHMEM_AM_GET){
         proc.am_info.get_cbs[proc.am_info.next_get_am_index] = cb;
+        proc.am_info.get_contexts[proc.am_info.next_get_am_index] = cb_context;
         return proc.am_info.next_get_am_index++;
     }
     else{

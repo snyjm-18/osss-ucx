@@ -185,13 +185,15 @@ typedef struct shmemc_am_fence_mem{
 
 /* we need a global AM data structure and a active_message file TODO */
 typedef unsigned shmem_am_handle_t;
-typedef void (*shmem_am_func)(void *elem, void *args, int elem_index);
+typedef void (*shmem_am_func)(void *elem, void *args, int elem_index, void *cb_context);
 
 typedef struct am_info{
     int sent_ams;               /* how many ams I have sent */
     int received_ams;           /* how many ams I have received */
     shmem_am_func put_cbs[MAX_CBS]; /* user callbacks for put active messages */
     shmem_am_func get_cbs[MAX_CBS];
+    void *        put_contexts[MAX_CBS];
+    void *        get_contexts[MAX_CBS];
     shmem_am_handle_t next_put_am_index;
     shmem_am_handle_t next_get_am_index;
     shmemc_am_fence_mem_t am_fence;  /* symetric memory regions for am fence ops */

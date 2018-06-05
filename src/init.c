@@ -204,8 +204,8 @@ shmem_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shm
 }
 
 shmem_am_handle_t
-shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb){
-    return shmemc_insert_cb(type, cb);
+shmem_insert_cb(shmem_am_type_t type, shmem_am_cb cb, void *cb_context){
+    return shmemc_insert_cb(type, cb, cb_context);
 }
 
 /*

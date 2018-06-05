@@ -123,7 +123,7 @@ typedef enum shmem_am_type_e{
 
 typedef struct ucx_context *shmem_get_am_nb_handle_t;
 
-typedef void (*shmem_am_cb)(void *elem, void *args, int elem_index);
+typedef void (*shmem_am_cb)(void *elem, void *args, int elem_index, void *context);
 /*
  * default context, and context attributes
  */
