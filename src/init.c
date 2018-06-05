@@ -162,13 +162,15 @@ shmem_init_am()
 }
 
 void
-shmem_get_am_wait(shmem_get_am_nb_handle_t handle)
+shmem_get_am_wait(shmem_get_am_nb_handle_t *handle, int num_handles)
 {
-    while(!handle->completed){
-        shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
+    for(int i = 0; i < num_handles; i++){
+        while(!(handle[i]->completed)){
+            shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
+        }
+        handle[i]->completed = 0;
+        ucp_request_free(handle[i]);
     }
-    handle->completed = 0;
-    ucp_request_free(handle);
 }
 
 int
@@ -192,7 +194,7 @@ void
 shmem_get_am(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length)
 {
     shmem_get_am_nb_handle_t wait_handle = shmemc_get_am_nb(dest, src, nelems, elem_size, pe, id, args, arg_length, SHMEM_CTX_DEFAULT);
-    shmem_get_am_wait(wait_handle);
+    shmem_get_am_wait(&wait_handle, 1);
 }
 
 shmem_get_am_nb_handle_t
