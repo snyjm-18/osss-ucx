@@ -453,9 +453,10 @@ shmemc_ucx_init(void)
     /* don't need config info any more */
     ucp_config_release(proc.comms.ucx_cfg);
     
+    
     /* setting uct_eps to NULL in case we do not use AM */
-    proc.comms.am_eps = NULL;
-
+    //proc.comms.am_eps = NULL;
+    
     /* set up globalexit handler */
     shmemc_globalexit_init();
 }
@@ -485,11 +486,11 @@ shmemc_ucx_finalize(void)
 
     shmemc_broadcast_finalize();
     shmemc_barrier_finalize();
-    
+    /*
     if(proc.comms.am_eps){
         free(proc.comms.am_eps);
     }
-
+    */
     shmemc_env_finalize();
 
     ucp_cleanup(proc.comms.ucx_ctxt);
@@ -507,11 +508,11 @@ active_put(void *arg, void *data, size_t length, unsigned flags)
     int num_elems;
     size_t elem_size;
     void *dest;
-    size_t arg_offset = sizeof(uint64_t) + offsetof(shmemc_am_put_data_t, payload);
+    size_t arg_offset = offsetof(shmemc_am_put_data_t, payload);
     void *args;
 
     dest = *(void **)data;
-    shmemc_am_put_data_t *payload = (shmemc_am_put_data_t *)((char *)data + sizeof(uint64_t));
+    shmemc_am_put_data_t *payload = (shmemc_am_put_data_t *)((char *)data);
     
     elem_size = payload->size;
     num_elems = payload->nelems;
@@ -545,9 +546,9 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     void *args;
     struct ucx_context *status = 0;
     unsigned long reply_tag;
-    size_t arg_offset = sizeof(uint64_t) + offsetof(shmemc_am_get_data_t, payload);
+    size_t arg_offset = offsetof(shmemc_am_get_data_t, payload);
     dest = *(void **)data;
-    shmemc_am_get_data_t *payload = (shmemc_am_get_data_t *)((char *)data + sizeof(uint64_t));
+    shmemc_am_get_data_t *payload = (shmemc_am_get_data_t *)((char *)data);
     target = payload->requester;
     reply_tag = payload->reply_tag;
     elem_size = payload->size;
@@ -563,6 +564,7 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     if(UCS_PTR_STATUS(status) == UCS_OK){
         proc.am_info.sent_am_replys++;
     }
+
     return UCS_OK;
 }
 
@@ -596,14 +598,19 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
                   //may not be in the future.
     get_id = 30;
     args = 0; //TODO what to do about arguments
-    proc.comms.am_eps = malloc(sizeof(uct_ep_h) * proc.nranks);
+    //proc.comms.am_eps = malloc(sizeof(uct_ep_h) * proc.nranks);
     for(int i = 0; i < proc.nranks; i++){
+
+        ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 0, active_put, &args, UCT_CB_FLAG_ASYNC);
+        ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 1, active_get, &args, UCT_CB_FLAG_ASYNC);
+/*
         ucp_ep = proc.comms.eps[i];
         uct_ep = ucp_ep_get_am_uct_ep_usr(ucp_ep);
         iface = uct_ep->iface;
         uct_iface_set_am_handler(iface, put_id, active_put, &args, UCT_CB_FLAG_ASYNC);
         uct_iface_set_am_handler(iface, get_id, active_get, &args, UCT_CB_FLAG_ASYNC);
         proc.comms.am_eps[i] = uct_ep;
+*/
     }
     ucp_worker_get_efd(context->w, &fd);
     proc.am_info.am_fd.events = POLLIN;

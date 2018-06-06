@@ -41,6 +41,7 @@ void shmemc_print_env_vars(FILE *stream, const char *prefix);
  *
  */
 typedef struct shmemc_am_put_data{
+    uint64_t header;
     int nelems;
     size_t size;
     shmem_am_handle_t handle;
@@ -48,6 +49,7 @@ typedef struct shmemc_am_put_data{
 } shmemc_am_put_data_t;
 
 typedef struct shmemc_am_get_data{
+    uint64_t header;
     unsigned long reply_tag;
     int requester;
     int nelems;

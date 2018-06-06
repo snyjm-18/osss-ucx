@@ -96,7 +96,7 @@ typedef struct comms_info {
     ucp_context_h ucx_ctxt;     /* local communication context */
     ucp_config_t *ucx_cfg;      /* local config */
     ucp_ep_h *eps;              /* nranks endpoints (1 of which is mine) */
-    uct_ep_h *am_eps;           /* nranks for uct endpoints for active message */
+    //uct_ep_h *am_eps;           /* nranks for uct endpoints for active message */
 
     worker_info_t *xchg_wrkr_info; /* nranks worker info exchanged */
 
