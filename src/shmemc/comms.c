@@ -721,27 +721,23 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
     size_t arg_offset = offsetof(shmemc_am_put_data_t, payload);
     char data[arg_offset + arg_length];
     shmemc_am_put_data_t *payload;
-    uint8_t uct_id = 0; /*this is based on the am's used by ucp could need to change w/ ucx */
 
     payload = (shmemc_am_put_data_t *)(data);
 
     get_remote_key_and_addr((uint64_t) dest, pe, &rkey, &header); 
-    //target_pe = proc.comms.am_eps[pe];
 
     payload->header = header;
     payload->nelems = nelems;
     payload->size = elem_size;
     payload->handle = id;
     memcpy(data + arg_offset, args, arg_length);
-    /* If this returns UCS_OK I think it is okay the leave the function and let data die but the documentation is unclear */
-    //status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
+    
     status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 0, data, sizeof(shmemc_am_put_data_t) + arg_length);
 
     while(status != UCS_OK){
         if(status == UCS_ERR_NO_RESOURCE){
             helper_ctx_progress(ctx);
-            //status = uct_ep_am_short(target_pe, uct_id, header, data, sizeof(shmemc_am_put_data_t) + arg_length);
-            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], id, data, sizeof(shmemc_am_put_data_t) + arg_length);
+            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 0, data, sizeof(shmemc_am_put_data_t) + arg_length);
         }
     }
 
@@ -770,11 +766,9 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     ucp_tag_recv_info_t recv_info;
     ucp_tag_t tag = proc.am_info.next_get_tag;
     ucp_tag_t mask = ~0;
-
     payload = (shmemc_am_get_data_t *)(data);
 
     get_remote_key_and_addr((uint64_t) src, pe, &rkey, &header);
-    //target = proc.comms.am_eps[pe];
 
     payload->header = header;
     payload->requester = proc.rank;
@@ -783,19 +777,15 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     payload->handle = id;
     payload->reply_tag = tag; //TODO figure out best way to figure out these tags
     proc.am_info.next_get_tag++; // okay with this over flowing, if we have more than unsigned long outstanding gets...
+    
     memcpy(data + arg_offset, args, arg_length);
-    //status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
+    
     status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 1, data, sizeof(shmemc_am_get_data_t) + arg_length);
-    while(status != UCS_OK && status != UCS_INPROGRESS){
+    while(status != UCS_OK){
         if(status == UCS_ERR_NO_RESOURCE){
             helper_ctx_progress(ctx);
-            //status = uct_ep_am_short(target, uct_id, header, data, sizeof(shmemc_am_get_data_t) + arg_length);
-            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], id, data, sizeof(shmemc_am_get_data_t) + arg_length);
+            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 1, data, sizeof(shmemc_am_get_data_t) + arg_length);
         }
-        if(status == UCS_INPROGRESS){
-            helper_ctx_progress(ctx);
-        }
-
     }
     recv_status = ucp_tag_recv_nb(context->w, dest, elem_size * nelems, 
                                     ucp_dt_make_contig(1), tag, mask, recv_completion);

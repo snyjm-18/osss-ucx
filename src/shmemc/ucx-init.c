@@ -453,10 +453,6 @@ shmemc_ucx_init(void)
     /* don't need config info any more */
     ucp_config_release(proc.comms.ucx_cfg);
     
-    
-    /* setting uct_eps to NULL in case we do not use AM */
-    //proc.comms.am_eps = NULL;
-    
     /* set up globalexit handler */
     shmemc_globalexit_init();
 }
@@ -486,11 +482,7 @@ shmemc_ucx_finalize(void)
 
     shmemc_broadcast_finalize();
     shmemc_barrier_finalize();
-    /*
-    if(proc.comms.am_eps){
-        free(proc.comms.am_eps);
-    }
-    */
+    
     shmemc_env_finalize();
 
     ucp_cleanup(proc.comms.ucx_ctxt);
@@ -594,23 +586,11 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     int args;
     uint8_t put_id, get_id;
     
-    put_id = 31; //XXX These may have to change as UCP changes. These are currently available but 
-                  //may not be in the future.
-    get_id = 30;
     args = 0; //TODO what to do about arguments
-    //proc.comms.am_eps = malloc(sizeof(uct_ep_h) * proc.nranks);
     for(int i = 0; i < proc.nranks; i++){
 
         ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 0, active_put, &args, UCT_CB_FLAG_ASYNC);
         ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 1, active_get, &args, UCT_CB_FLAG_ASYNC);
-/*
-        ucp_ep = proc.comms.eps[i];
-        uct_ep = ucp_ep_get_am_uct_ep_usr(ucp_ep);
-        iface = uct_ep->iface;
-        uct_iface_set_am_handler(iface, put_id, active_put, &args, UCT_CB_FLAG_ASYNC);
-        uct_iface_set_am_handler(iface, get_id, active_get, &args, UCT_CB_FLAG_ASYNC);
-        proc.comms.am_eps[i] = uct_ep;
-*/
     }
     ucp_worker_get_efd(context->w, &fd);
     proc.am_info.am_fd.events = POLLIN;
