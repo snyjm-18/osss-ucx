@@ -560,11 +560,17 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
 
 void *am_handler(void *arg){
     shmemc_context_h context = arg;
+    ucs_status_t status;
     while(poll(&(proc.am_info.am_fd), 1, -1) > -1){
         ucp_worker_progress(context->w);
-        ucp_worker_arm(context->w);
+        status = ucp_worker_arm(context->w);
+        while(status != UCS_OK){
+            ucp_worker_progress(context->w);
+            status = ucp_worker_arm(context->w);
+        }
     }
 }
+
 
 /* ucx am stuff 
  *
@@ -596,7 +602,7 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     while(ucp_worker_arm(context->w) == UCS_ERR_BUSY){
         ucp_worker_progress(context->w);
     }
-    //pthread_create(&(proc.am_tid), NULL, am_handler, ctx);
+    pthread_create(&(proc.am_info.am_tid), NULL, am_handler, ctx);
     
     //TODO look into removing this
     attr.field_mask = UCP_ATTR_FIELD_REQUEST_SIZE;
