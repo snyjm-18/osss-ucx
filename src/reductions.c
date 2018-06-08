@@ -322,6 +322,7 @@ shmem_fence_am(void)
     shmem_int_sum_to_all(proc.am_info.am_fence.total_ams, proc.am_info.am_fence.local_ams, 2, 0, 0, 
                             proc.nranks, proc.am_info.am_fence.pWrk, proc.am_info.am_fence.pSync);
     while(proc.am_info.am_fence.total_ams[0] != proc.am_info.am_fence.total_ams[1]){
+        shmemc_progress();
         shmem_int_sum_to_all(proc.am_info.am_fence.total_ams, proc.am_info.am_fence.local_ams, 2, 0, 0, 
                                 proc.nranks, proc.am_info.am_fence.pWrk, proc.am_info.am_fence.pSync);
         local_vals[0] = proc.am_info.sent_ams;

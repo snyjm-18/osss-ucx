@@ -493,30 +493,28 @@ shmemc_ucx_finalize(void)
  * output : 
  *  iface : uct iface 
  */
-
 static ucs_status_t 
 active_put(void *arg, void *data, size_t length, unsigned flags)
-{
+{ 
     int num_elems;
     size_t elem_size;
     void *dest;
     size_t arg_offset = offsetof(shmemc_am_put_data_t, payload);
     void *args;
-
-    dest = *(void **)data;
+    
     shmemc_am_put_data_t *payload = (shmemc_am_put_data_t *)((char *)data);
     
+    dest = (void *)payload->header;
+
     elem_size = payload->size;
     num_elems = payload->nelems;
     
     args = (void *)(((char *)data) + arg_offset);
-
     for(int i = 0; i < num_elems; i++){
         proc.am_info.put_cbs[payload->handle](dest, args, i, proc.am_info.put_contexts[payload->handle]);
         dest = (char *)dest + elem_size;
     }
     proc.am_info.received_ams++;
-
     return UCS_OK;
 }
 

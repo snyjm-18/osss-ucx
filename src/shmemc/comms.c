@@ -707,6 +707,18 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
                   "non-blocking get failed");
  }
 
+
+void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
+    struct ucx_context *context = (struct ucx_context *)data;
+    context->completed = 1;
+    proc.am_info.received_ams++; //XXX this will have to be protected w/ multiple threads
+}
+
+void send_request_completion(void *request, ucs_status_t status){
+    struct ucx_context *context = (struct ucx_context *)request;
+    context->completed = 1;
+}
+
 /* active message put 
  */
 void
@@ -717,38 +729,40 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
     uint64_t header;
     size_t length;
     ucp_rkey_h rkey;
-    ucs_status_t status;
+    ucs_status_ptr_t status;
     size_t arg_offset = offsetof(shmemc_am_put_data_t, payload);
     char data[arg_offset + arg_length];
     shmemc_am_put_data_t *payload;
-
+    struct ucx_context *comp_ctx;
     payload = (shmemc_am_put_data_t *)(data);
 
-    get_remote_key_and_addr((uint64_t) dest, pe, &rkey, &header); 
+    if(dest){
+        get_remote_key_and_addr((uint64_t) dest, pe, &rkey, &header); 
+    }
 
-    payload->header = header;
+    payload->header = (uint64_t)header;
     payload->nelems = nelems;
     payload->size = elem_size;
     payload->handle = id;
     memcpy(data + arg_offset, args, arg_length);
     
-    status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 0, data, sizeof(shmemc_am_put_data_t) + arg_length);
+    status = ucp_ep_am_put(proc.comms.eps[pe], 0, data, 1, ucp_dt_make_contig(sizeof(shmemc_am_put_data_t) + arg_length), send_request_completion, 0);
 
-    while(status != UCS_OK){
-        if(status == UCS_ERR_NO_RESOURCE){
-            helper_ctx_progress(ctx);
-            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 0, data, sizeof(shmemc_am_put_data_t) + arg_length);
-        }
+    if(UCS_PTR_IS_ERR(status)){
+        printf("err \n");
     }
-
+    if(status != UCS_OK && !UCS_PTR_IS_ERR(status)){
+        comp_ctx = (struct ucx_context *)status;
+        while(!(comp_ctx->completed)){
+            helper_ctx_progress(ctx);
+        }
+        comp_ctx->completed = 0;
+        ucp_request_free(status);
+    }
     proc.am_info.sent_ams++;
 }
 
-void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
-    struct ucx_context *context = (struct ucx_context *)data;
-    context->completed = 1;
-    proc.am_info.received_ams++; //XXX this will have to be protected w/ multiple threads
-}
+
 
 shmem_get_am_nb_handle_t
 shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx){
@@ -758,7 +772,7 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     uint64_t header;
     size_t length;
     ucp_rkey_h rkey;
-    ucs_status_t status;
+    ucs_status_ptr_t status;
     struct ucx_context *recv_status;
     shmemc_am_get_data_t *payload;
     size_t arg_offset = offsetof(shmemc_am_get_data_t, payload);
@@ -767,8 +781,10 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     ucp_tag_t tag = proc.am_info.next_get_tag;
     ucp_tag_t mask = ~0;
     payload = (shmemc_am_get_data_t *)(data);
-
+    struct ucx_context *comp_ctx;
+    
     get_remote_key_and_addr((uint64_t) src, pe, &rkey, &header);
+
 
     payload->header = header;
     payload->requester = proc.rank;
@@ -780,12 +796,17 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     
     memcpy(data + arg_offset, args, arg_length);
     
-    status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 1, data, sizeof(shmemc_am_get_data_t) + arg_length);
-    while(status != UCS_OK){
-        if(status == UCS_ERR_NO_RESOURCE){
+    status = ucp_ep_am_put(proc.comms.eps[pe], 1, data, 1, ucp_dt_make_contig(sizeof(shmemc_am_get_data_t) + arg_length), send_request_completion, 0);
+    if(UCS_PTR_IS_ERR(status)){
+        printf("err \n");
+    }
+    if(status != UCS_OK && !UCS_PTR_IS_ERR(status)){
+        comp_ctx = (struct ucx_context *)status;
+        while(!(comp_ctx->completed)){
             helper_ctx_progress(ctx);
-            status = ucp_ep_am_put(context->w, proc.comms.eps[pe], 1, data, sizeof(shmemc_am_get_data_t) + arg_length);
         }
+        comp_ctx->completed = 0;
+        ucp_request_free(status);
     }
     recv_status = ucp_tag_recv_nb(context->w, dest, elem_size * nelems, 
                                     ucp_dt_make_contig(1), tag, mask, recv_completion);
