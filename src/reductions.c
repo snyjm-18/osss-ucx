@@ -297,36 +297,3 @@ SHMEM_REDUCE_TYPE_OP(min, 0.0, float, float)
 SHMEM_REDUCE_TYPE_OP(min, 0.0, double, double)
 SHMEM_REDUCE_TYPE_OP(min, 0.0, longdouble, long double)
 
-void
-shmem_fence_am(void)
-{
-    long put_val = SHMEM_SYNC_VALUE;
-    int local_vals[2];// = {proc.sent_ams, proc.received_ams};
-    
-
-    local_vals[0] = proc.am_info.sent_ams;
-    local_vals[1] = proc.am_info.received_ams;
-    
-    /* if we haven't make our shared space for this reduction */
-    /* maybe do this at start up */ 
-    /* Need to free this memory */
-    if(!proc.am_info.am_fence.pWrk){
-        proc.am_info.am_fence.pWrk = shmem_malloc(sizeof(int) * SHMEM_REDUCE_MIN_WRKDATA_SIZE);
-        proc.am_info.am_fence.pSync = shmem_malloc(sizeof(long) * SHMEM_REDUCE_SYNC_SIZE);
-        shmem_long_put(proc.am_info.am_fence.pSync, &put_val, SHMEM_REDUCE_SYNC_SIZE, proc.rank);
-        proc.am_info.am_fence.total_ams = shmem_malloc(2 * sizeof(int));
-        proc.am_info.am_fence.local_ams = shmem_malloc(2 * sizeof(int));
-    }
-    shmem_int_put(proc.am_info.am_fence.local_ams, local_vals, 2, proc.rank);
-
-    shmem_int_sum_to_all(proc.am_info.am_fence.total_ams, proc.am_info.am_fence.local_ams, 2, 0, 0, 
-                            proc.nranks, proc.am_info.am_fence.pWrk, proc.am_info.am_fence.pSync);
-    while(proc.am_info.am_fence.total_ams[0] != proc.am_info.am_fence.total_ams[1]){
-        shmemc_progress();
-        shmem_int_sum_to_all(proc.am_info.am_fence.total_ams, proc.am_info.am_fence.local_ams, 2, 0, 0, 
-                                proc.nranks, proc.am_info.am_fence.pWrk, proc.am_info.am_fence.pSync);
-        local_vals[0] = proc.am_info.sent_ams;
-        local_vals[1] = proc.am_info.received_ams;
-        shmem_int_put(proc.am_info.am_fence.local_ams, local_vals, 2, proc.rank);
-    }
-}

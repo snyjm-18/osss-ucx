@@ -21,7 +21,6 @@
 #include <pthread.h>
 
 #include <ucp/api/ucp.h>
-#include <uct/api/uct.h>
 /*
  * worker tables
  */
@@ -407,6 +406,7 @@ ucx_init_ready(void)
         UCP_FEATURE_AMO32    |  /* 32-bit atomics */
         UCP_FEATURE_AMO64    |  /* 64-bit atomics */
         UCP_FEATURE_TAG      |  /* for am get */ 
+        UCP_FEATURE_AM       |  
         UCP_FEATURE_WAKEUP;     /* events (not used, but looking ahead) */
 
     pm.mt_workers_shared = (proc.td.osh_tl > SHMEM_THREAD_SINGLE);
@@ -495,7 +495,7 @@ shmemc_ucx_finalize(void)
  */
 static ucs_status_t 
 active_put(void *arg, void *data, size_t length, unsigned flags)
-{ 
+{
     int num_elems;
     size_t elem_size;
     void *dest;
@@ -580,8 +580,6 @@ void
 shmemc_ucx_init_am(shmem_ctx_t ctx)
 {
     shmemc_context_h context = (shmemc_context_h)ctx;
-    uct_iface_h iface;
-    uct_ep_h uct_ep;
     ucp_ep_h ucp_ep;
     ucs_status_t status;
     ucp_context_attr_t attr;
@@ -593,8 +591,10 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     args = 0; //TODO what to do about arguments
     for(int i = 0; i < proc.nranks; i++){
 
-        ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 0, active_put, &args, UCT_CB_FLAG_ASYNC);
-        ucp_ep_set_am_handler(context->w, proc.comms.eps[i], 1, active_get, &args, UCT_CB_FLAG_ASYNC);
+        ucp_ep_set_am_handler(proc.comms.eps[i], 0, active_put,
+                              &args, UCP_CB_FLAG_ASYNC);
+        ucp_ep_set_am_handler(proc.comms.eps[i], 1, active_get,
+                              &args, UCP_CB_FLAG_ASYNC);
     }
     ucp_worker_get_efd(context->w, &fd);
     proc.am_info.am_fd.events = POLLIN;
@@ -602,7 +602,7 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     while(ucp_worker_arm(context->w) == UCS_ERR_BUSY){
         ucp_worker_progress(context->w);
     }
-    pthread_create(&(proc.am_info.am_tid), NULL, am_handler, ctx);
+    //pthread_create(&(proc.am_info.am_tid), NULL, am_handler, ctx);
     
     //TODO look into removing this
     attr.field_mask = UCP_ATTR_FIELD_REQUEST_SIZE;

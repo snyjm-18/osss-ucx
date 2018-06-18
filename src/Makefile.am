@@ -18,22 +18,23 @@ all_cppflags           = $(shmemc_cppflags) $(shmemu_cppflags) $(MY_INCLUDE)
 
 MY_SOURCES             = \
                                 accessible.c \
+                                active_message.c \
                                 alltoall.c \
                                 atomics.c \
                                 barrier.c \
                                 broadcast.c \
                                 cache.c \
                                 collect.c \
-				contexts.c \
+                                contexts.c \
                                 fcollect.c \
                                 globalexit.c \
-				info.c \
+                                info.c \
                                 init.c \
                                 lock.c \
                                 ptr.c \
                                 putget.c \
                                 quiet.c \
-				ranks.c  \
+                                ranks.c  \
                                 reductions.c \
                                 shmalloc.c \
                                 version.c \
