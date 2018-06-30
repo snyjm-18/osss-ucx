@@ -708,13 +708,15 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
  }
 
 
-void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info){
+void recv_completion(void *data, ucs_status_t status, ucp_tag_recv_info_t *info)
+{
     struct ucx_context *context = (struct ucx_context *)data;
     context->completed = 1;
     proc.am_info.received_ams++; //XXX this will have to be protected w/ multiple threads
 }
 
-void send_request_completion(void *request, ucs_status_t status){
+void send_request_completion(void *request, ucs_status_t status)
+{
     struct ucx_context *context = (struct ucx_context *)request;
     context->completed = 1;
 }
@@ -722,7 +724,10 @@ void send_request_completion(void *request, ucs_status_t status){
 /* active message put 
  */
 void
-shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx)
+shmemc_put_am(void *dest, int nelems, 
+              size_t elem_size, int pe, 
+              shmem_am_handle_t id, void *args, 
+              size_t arg_length, shmem_ctx_t ctx)
 {
     shmemc_context_h context = (shmemc_context_h)ctx;
     uct_ep_h target_pe;
@@ -746,7 +751,11 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
     payload->handle = id;
     memcpy(data + arg_offset, args, arg_length);
     
-    status = ucp_ep_am_put(proc.comms.eps[pe], 0, data, 1, ucp_dt_make_contig(sizeof(shmemc_am_put_data_t) + arg_length), send_request_completion, 0);
+    status = ucp_am_send_nb(proc.comms.eps[pe], 0, 
+                            data, 1, 
+                            ucp_dt_make_contig(sizeof(shmemc_am_put_data_t) + 
+                                               arg_length), 
+                            send_request_completion, 0);
 
     if(UCS_PTR_IS_ERR(status)){
         printf("err \n");
@@ -765,7 +774,12 @@ shmemc_put_am(void *dest, int nelems, size_t elem_size, int pe, shmem_am_handle_
 
 
 shmem_get_am_nb_handle_t
-shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, shmem_am_handle_t id, void *args, size_t arg_length, shmem_ctx_t ctx){
+shmemc_get_am_nb(void *dest, void *src, 
+                 int nelems, size_t elem_size, 
+                 int pe, shmem_am_handle_t id, 
+                 void *args, size_t arg_length, 
+                 shmem_ctx_t ctx)
+{
     
     shmemc_context_h context = (shmemc_context_h)ctx;
     uct_ep_h target;
@@ -792,14 +806,19 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
     payload->size = elem_size;
     payload->handle = id;
     payload->reply_tag = tag; //TODO figure out best way to figure out these tags
-    proc.am_info.next_get_tag++; // okay with this over flowing, if we have more than unsigned long outstanding gets...
-    
+    proc.am_info.next_get_tag++;     
     memcpy(data + arg_offset, args, arg_length);
     
-    status = ucp_ep_am_put(proc.comms.eps[pe], 1, data, 1, ucp_dt_make_contig(sizeof(shmemc_am_get_data_t) + arg_length), send_request_completion, 0);
+    status = ucp_am_send_nb(proc.comms.eps[pe], 1, 
+                            data, 1, 
+                            ucp_dt_make_contig(sizeof(shmemc_am_get_data_t) + 
+                                               arg_length), 
+                            send_request_completion, 0);
+
     if(UCS_PTR_IS_ERR(status)){
         printf("err \n");
     }
+
     if(status != UCS_OK && !UCS_PTR_IS_ERR(status)){
         comp_ctx = (struct ucx_context *)status;
         while(!(comp_ctx->completed)){
@@ -808,8 +827,11 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
         comp_ctx->completed = 0;
         ucp_request_free(status);
     }
-    recv_status = ucp_tag_recv_nb(context->w, dest, elem_size * nelems, 
-                                    ucp_dt_make_contig(1), tag, mask, recv_completion);
+
+    recv_status = ucp_tag_recv_nb(context->w, dest, 
+                                  elem_size * nelems, 
+                                  ucp_dt_make_contig(1), tag, 
+                                  mask, recv_completion);
     
     if(UCS_PTR_IS_ERR(recv_status)){
         printf("recv err\n");
@@ -819,11 +841,16 @@ shmemc_get_am_nb(void *dest, void *src, int nelems, size_t elem_size, int pe, sh
 }
 
 shmem_am_handle_t
-shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb, void *cb_context){
-    
-    if(MAX_CBS <= proc.am_info.next_put_am_index || MAX_CBS <= proc.am_info.next_get_am_index){
-      printf("too many proc.next_put_am_index : %d proc.next_get_am_index : %d \n", proc.am_info.next_put_am_index, proc.am_info.next_get_am_index);
-      return -1;
+shmemc_insert_cb(shmem_am_type_t type, shmem_am_cb cb,
+                 void *cb_context)
+{   
+    if(MAX_CBS <= proc.am_info.next_put_am_index || 
+       MAX_CBS <= proc.am_info.next_get_am_index){
+          printf("too many proc.next_put_am_index : %d"
+                 "proc.next_get_am_index : %d \n", 
+                  proc.am_info.next_put_am_index, 
+                  proc.am_info.next_get_am_index);
+        return -1;
     }
 
     if(type == SHMEM_AM_PUT){

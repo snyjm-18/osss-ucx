@@ -493,7 +493,7 @@ shmemc_ucx_finalize(void)
  * output : 
  *  iface : uct iface 
  */
-static ucs_status_t 
+static ucs_status_t
 active_put(void *arg, void *data, size_t length, unsigned flags)
 {
     int num_elems;
@@ -554,7 +554,6 @@ active_get(void *arg, void *data, size_t length, unsigned flags)
     if(UCS_PTR_STATUS(status) == UCS_OK){
         proc.am_info.sent_am_replys++;
     }
-
     return UCS_OK;
 }
 
@@ -589,6 +588,7 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
     uint8_t put_id, get_id;
     
     args = 0; //TODO what to do about arguments
+    /*
     for(int i = 0; i < proc.nranks; i++){
 
         ucp_ep_set_am_handler(proc.comms.eps[i], 0, active_put,
@@ -596,6 +596,15 @@ shmemc_ucx_init_am(shmem_ctx_t ctx)
         ucp_ep_set_am_handler(proc.comms.eps[i], 1, active_get,
                               &args, UCP_CB_FLAG_ASYNC);
     }
+    */
+
+
+    ucp_worker_set_am_handler(context->w, 0, active_put,
+                              &args, 0);
+    ucp_worker_set_am_handler(context->w, 1, active_get,
+                          &args, 0);
+
+
     ucp_worker_get_efd(context->w, &fd);
     proc.am_info.am_fd.events = POLLIN;
     proc.am_info.am_fd.fd = fd;
