@@ -508,12 +508,15 @@ active_put(void *arg, void *data, size_t length, unsigned flags)
 
     elem_size = payload->size;
     num_elems = payload->nelems;
-    
     args = (void *)(((char *)data) + arg_offset);
+    proc.am_info.put_cbs[payload->handle](dest, args, elem_size * num_elems, proc.am_info.put_contexts[payload->handle]);
+    
+    /*
     for(int i = 0; i < num_elems; i++){
         proc.am_info.put_cbs[payload->handle](dest, args, i, proc.am_info.put_contexts[payload->handle]);
         dest = (char *)dest + elem_size;
     }
+    */
     proc.am_info.received_ams++;
     return UCS_OK;
 }

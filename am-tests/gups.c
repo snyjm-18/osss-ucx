@@ -156,7 +156,7 @@
  * distribution.
  *
  */
-#define USE_GET_PUT
+//#define USE_GET_PUT
 #include <stdio.h>
 #include <shmem.h>
 #include <time.h>
@@ -184,6 +184,8 @@ double SHMEMRandomAccess_ErrorsFraction;
 double SHMEMRandomAccess_time;
 double SHMEMRandomAccess_CheckTime;
 int Failure;
+
+double comm_time = 0;
 
 /* Allocate main table (in global memory) */
 uint64_t *HPCC_Table;
@@ -259,7 +261,7 @@ static int64_t starts(uint64_t n)
 
 
 
-void xor_func(void *item, void *args, int index){
+void xor_func(void *item, void *args, int index, void* context){
     uint64_t *update_num = item;
     uint64_t ran = *(uint64_t *)args;
     *update_num ^= ran;
@@ -284,7 +286,7 @@ UpdateTable(uint64_t *Table,
 #ifdef USE_GET_PUT
   uint64_t remote_val;
 #endif
-
+  double rt;
   shmem_barrier_all();
 
   /* setup: should not really be part of this timed routine */
@@ -303,15 +305,17 @@ UpdateTable(uint64_t *Table,
       index = global_offset - global_start_at_pe;
 
       if (use_lock) shmem_set_lock(&HPCC_PELock[remote_pe]);
+      rt = -RTSEC();
 #ifdef USE_GET_PUT
       remote_val = (uint64_t) shmem_long_g((long *)&Table[index], remote_pe);
       remote_val ^= ran;
       shmem_long_p((long *)&Table[index], remote_val, remote_pe);
-
 #else
       shmem_put_am((long *)&Table[index], 1, sizeof(long), remote_pe, h1, &ran, sizeof(uint64_t));
       //shmem_uint64_atomic_xor(&Table[index], ran, remote_pe);
 #endif
+      rt += RTSEC();
+      comm_time += rt;
       if (use_lock) shmem_clear_lock(&HPCC_PELock[remote_pe]);
   }
 
@@ -467,11 +471,10 @@ SHMEMRandomAccess(void)
               0);
 
   shmem_barrier_all();
-
   /* End timed section */
 
   RealTime += RTSEC();
-  shmem_fence_am();
+  //shmem_fence_am();
   /* Print timing results */
   if (MyProc == 0){
     SHMEMRandomAccess_time = RealTime;
@@ -504,7 +507,7 @@ SHMEMRandomAccess(void)
 
   NumErrors = 0;
 #ifdef FENCE
-  shmem_fence_am();
+  //shmem_fence_am();
 #endif
   for (i_u=0; i_u<LocalTableSize; i_u++){
     if (HPCC_Table[i_u] != i_u + GlobalStartMyProc)
@@ -574,10 +577,10 @@ int main(int argc, char **argv)
     }
   }
   int got;
-  shmem_init_thread(SHMEM_THREAD_MULTIPLE, &got);
-  //shmem_init();
+  //shmem_init_thread(SHMEM_THREAD_MULTIPLE, &got);
+  shmem_init();
   shmem_init_am();
-  h1 = shmem_insert_cb(SHMEM_AM_PUT, xor_func);
+  h1 = shmem_insert_cb(SHMEM_AM_PUT, xor_func, NULL);
   SHMEMRandomAccess();
   shmem_finalize();
 

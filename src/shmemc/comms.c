@@ -773,7 +773,7 @@ shmemc_put_am(void *dest, int nelems,
 
 
 
-shmem_get_am_nb_handle_t
+shmem_am_nb_handle_t
 shmemc_get_am_nb(void *dest, void *src, 
                  int nelems, size_t elem_size, 
                  int pe, shmem_am_handle_t id, 
@@ -837,7 +837,7 @@ shmemc_get_am_nb(void *dest, void *src,
         printf("recv err\n");
     }
     proc.am_info.sent_ams++;
-    return recv_status;
+    return (struct ucx_context *)recv_status;
 }
 
 shmem_am_handle_t

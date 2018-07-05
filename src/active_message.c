@@ -15,7 +15,7 @@
 #include <errno.h>
 
 void
-shmem_get_am_wait(shmem_get_am_nb_handle_t *handle, int num_handles)
+shmem_get_am_wait(shmem_am_nb_handle_t *handle, int num_handles)
 {
     for(int i = 0; i < num_handles; i++){
         while(!(handle[i]->completed)){
@@ -27,7 +27,7 @@ shmem_get_am_wait(shmem_get_am_nb_handle_t *handle, int num_handles)
 }
     
 int        
-shmem_get_am_test(shmem_get_am_nb_handle_t handle)
+shmem_get_am_test(shmem_am_nb_handle_t handle)
 {          
     int ret_val = handle->completed;
     if(handle->completed){
@@ -52,14 +52,14 @@ shmem_get_am(void *dest, void *src,
              int pe, shmem_am_handle_t id, 
              void *args, size_t arg_length)
 {          
-    shmem_get_am_nb_handle_t wait_handle = shmemc_get_am_nb(dest, src, nelems, 
+    shmem_am_nb_handle_t wait_handle = shmemc_get_am_nb(dest, src, nelems, 
                                                             elem_size, pe, id, 
                                                             args, arg_length, 
                                                             SHMEM_CTX_DEFAULT);
     shmem_get_am_wait(&wait_handle, 1);
 }
 
-shmem_get_am_nb_handle_t
+shmem_am_nb_handle_t
 shmem_get_am_nb(void *dest, void *src, 
                 int nelems, size_t elem_size, 
                 int pe, shmem_am_handle_t id, 

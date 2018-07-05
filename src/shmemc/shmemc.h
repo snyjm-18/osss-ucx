@@ -67,7 +67,7 @@ void shmemc_put_am(void *dest,
                    int pe, shmem_am_handle_t index, 
                    void *arg, size_t arg_length,
                    shmem_ctx_t ctx);
-shmem_get_am_nb_handle_t  shmemc_get_am_nb(void *dest, void *src, 
+shmem_am_nb_handle_t  shmemc_get_am_nb(void *dest, void *src, 
                                            int nelems, size_t elem_size, 
                                            int pe, shmem_am_handle_t index, 
                                            void *arg, size_t arg_length, 

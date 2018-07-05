@@ -185,7 +185,7 @@ typedef struct shmemc_am_fence_mem{
 
 /* we need a global AM data structure and a active_message file TODO */
 typedef unsigned shmem_am_handle_t;
-typedef void (*shmem_am_func)(void *elem, void *args, int elem_index, void *cb_context);
+typedef void (*shmem_am_func)(void *elem, void *args, size_t size, void *cb_context);
 
 typedef struct am_info{
     int sent_ams;               /* how many ams I have sent */

@@ -121,9 +121,9 @@ typedef enum shmem_am_type_e{
     SHMEM_AM_GET
 }shmem_am_type_t;
 
-typedef struct ucx_context *shmem_get_am_nb_handle_t;
+typedef struct ucx_context *shmem_am_nb_handle_t;
 
-typedef void (*shmem_am_cb)(void *elem, void *args, int elem_index, void *context);
+typedef void (*shmem_am_cb)(void *elem, void *args, size_t size, void *context);
 /*
  * default context, and context attributes
  */
