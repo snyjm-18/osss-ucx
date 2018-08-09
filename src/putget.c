@@ -51,7 +51,7 @@ shmem_test(shmem_nb_handle_t handle)
 }
 
 int
-shmem_test_any(shmem_nb_handle_t *handle, size_t num_handles)
+shmem_testany(shmem_nb_handle_t *handle, size_t num_handles)
 {
     size_t i;
     for(i = 0; i < num_handles; i++){
