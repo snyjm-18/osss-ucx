@@ -74,6 +74,11 @@ shmem_nb_handle_t
 shmemc_ctx_get_nb(shmem_ctx_t ctx,
                   void *dest , const void *src,
                   size_t nbytes, int pe);
+
+shmem_nb_handle_t
+shmem_atomic_fetch_add_nb(shmem_ctx_t ctx,
+                          long long *fetch, long long *target, 
+                          long long value, int pe);
 /*
  * -- AMOs -------------------------------------------------------------------
  */

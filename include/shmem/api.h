@@ -142,6 +142,9 @@ extern "C"
     void shmem_wait(shmem_nb_handle_t handle);
 
     void shmem_waitall(shmem_nb_handle_t *handle, size_t num_handles);
+
+    shmem_nb_handle_t
+    shmem_atmoic_fetch_add_nb(long long *fetch, long long *target, long long value, int pe);
     /**
      * @brief causes immediate exit from the OpenSHMEM program on all PEs.
      *

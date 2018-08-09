@@ -15,6 +15,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
+shmem_nb_handle_t
+shmem_atmoic_fetch_add_nb(long long *fetch, long long *target, long long value, int pe){
+    return shmemc_atomic_fetch_add_nb(SHMEM_CTX_DEFAULT, fetch, target, value, pe);
+}
+
 #ifdef ENABLE_PSHMEM
 #pragma weak shmem_ctx_float_atomic_swap = pshmem_ctx_float_atomic_swap
 #define shmem_ctx_float_atomic_swap pshmem_ctx_float_atomic_swap

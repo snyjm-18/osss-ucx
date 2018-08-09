@@ -18,6 +18,14 @@
  * -- helpers ----------------------------------------------------------------
  */
 
+void 
+nb_comp(void *request, ucs_status_t status)
+{
+    shmemu_assert(status == UCS_OK, "non-blocking get failed");
+    struct ucx_context *context = (struct ucx_context *)request;
+    context->completed = 1;
+}
+
 /*
  * shortcut to look up the UCP endpoint of a context
  */
@@ -298,6 +306,40 @@ ucx_atomic_fetch_op(ucp_atomic_fetch_op_t uafo,
     return check_wait_for_request(ch, sp);
 }
 
+shmem_nb_handle_t
+ucx_atomic_fetch_op_nb(ucp_atomic_fetch_op_t uafo,
+                       shmemc_context_h ch,
+                       uint64_t t,
+                       uint64_t v,    /* encapsulate 32/64-bit value */
+                       size_t vs,     /* actual size of value */
+                       int pe,
+                       uint64_t *result)
+{
+    uint64_t r_t;
+    ucp_rkey_h rkey;
+    ucp_ep_h ep;
+    ucs_status_ptr_t sp;
+
+    get_remote_key_and_addr(t, pe, &rkey, &r_t);
+    ep = lookup_ucp_ep(ch, pe);
+
+    sp = ucp_atomic_fetch_nb(ep, uafo, v, result, vs, r_t, rkey,
+                             nb_comp);
+    if (sp == UCS_OK) {
+        return NULL;
+    }
+    return sp;
+}
+
+shmem_nb_handle_t
+shmem_atomic_fetch_add_nb(shmem_ctx_t ctx,
+                          long long *fetch, long long *target,
+                          long long value, int pe){
+    return ucx_atomic_fetch_op_nb(UCP_ATOMIC_FETCH_OP_FADD, ctx,
+                                  (uint64_t) target, value, 
+                                  sizeof(long long),
+                                  pe, (uint64_t *)fetch);
+}
 /* TODO: repeated patterns here, maybe some kind of template? */
 
 /*
@@ -709,13 +751,6 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
                   "non-blocking get failed");
 }
 
-void 
-get_nb_comp(void *request, ucs_status_t status)
-{
-    shmemu_assert(status == UCS_OK, "non-blocking get failed");
-    struct ucx_context *context = (struct ucx_context *)request;
-    context->completed = 1;
-}
 
 shmem_nb_handle_t
 shmemc_ctx_get_nb(shmem_ctx_t ctx,
@@ -730,7 +765,7 @@ shmemc_ctx_get_nb(shmem_ctx_t ctx,
     get_remote_key_and_addr((uint64_t) src, pe, &rkey, &r_src);
     ep = lookup_ucp_ep(ctx, pe);
 
-    s = ucp_get_nb(ep, dest, nbytes, r_src, rkey, get_nb_comp);
+    s = ucp_get_nb(ep, dest, nbytes, r_src, rkey, nb_comp);
 
     shmemu_assert(!UCS_PTR_IS_ERR(s), "non-blocking get failed");
  
