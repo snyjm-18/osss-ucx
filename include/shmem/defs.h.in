@@ -59,6 +59,8 @@
 #define SHMEM_MAX_NAME_LEN @SHMEM_MAX_NAME_LEN@
 #define SHMEM_VENDOR_STRING "@SHMEM_VENDOR_STRING@"
 
+typedef struct ucx_context *shmem_nb_handle_t;
+
 enum shmem_fortran_errors {
     SHMEM_MALLOC_OK                  = (0L),
     SHMEM_MALLOC_BAD_SIZE            = (-1L),

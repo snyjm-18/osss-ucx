@@ -40,6 +40,10 @@ void shmemc_print_env_vars(FILE *stream, const char *prefix);
  * -- Per-context routines ---------------------------------------------------
  */
 
+struct ucx_context {
+    int completed;
+};
+
 void shmemc_ctx_progress(shmem_ctx_t ctx);
 void shmemc_progress(void);
 
@@ -66,7 +70,10 @@ void shmemc_ctx_put_nbi(shmem_ctx_t ctx,
 void shmemc_ctx_get_nbi(shmem_ctx_t ctx,
                         void *dest, const void *src,
                         size_t nbytes, int pe);
-
+shmem_nb_handle_t
+shmemc_ctx_get_nb(shmem_ctx_t ctx,
+                  void *dest , const void *src,
+                  size_t nbytes, int pe);
 /*
  * -- AMOs -------------------------------------------------------------------
  */

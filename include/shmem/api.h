@@ -132,6 +132,16 @@ extern "C"
      */
     void shmem_finalize(void);
 
+    /* nb get ops */
+    shmem_nb_handle_t shmem_getmem_nb(void *dest, const void *src, size_t nelems, int pe);
+
+    int shmem_test_any(shmem_nb_handle_t *handle, size_t num_handles);
+
+    int shmem_test(shmem_nb_handle_t handle);
+
+    void shmem_wait(shmem_nb_handle_t handle);
+
+    void shmem_waitall(shmem_nb_handle_t *handle, size_t num_handles);
     /**
      * @brief causes immediate exit from the OpenSHMEM program on all PEs.
      *

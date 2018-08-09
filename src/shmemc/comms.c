@@ -707,7 +707,35 @@ shmemc_ctx_get_nbi(shmem_ctx_t ctx,
     s = ucp_get_nbi(ep, dest, nbytes, r_src, rkey);
     shmemu_assert((s == UCS_OK) || (s == UCS_INPROGRESS),
                   "non-blocking get failed");
- }
+}
+
+void 
+get_nb_comp(void *request, ucs_status_t status)
+{
+    shmemu_assert(status == UCS_OK, "non-blocking get failed");
+    struct ucx_context *context = (struct ucx_context *)request;
+    context->completed = 1;
+}
+
+shmem_nb_handle_t
+shmemc_ctx_get_nb(shmem_ctx_t ctx,
+                  void *dest , const void *src,
+                  size_t nbytes, int pe)
+{
+    uint64_t r_src;
+    ucp_rkey_h rkey;
+    ucp_ep_h ep;
+    ucs_status_ptr_t s;
+
+    get_remote_key_and_addr((uint64_t) src, pe, &rkey, &r_src);
+    ep = lookup_ucp_ep(ctx, pe);
+
+    s = ucp_get_nb(ep, dest, nbytes, r_src, rkey, get_nb_comp);
+
+    shmemu_assert(!UCS_PTR_IS_ERR(s), "non-blocking get failed");
+ 
+    return s == UCS_OK ? NULL : s;
+}
 
 /*
  * -- atomics ------------------------------------------------------------

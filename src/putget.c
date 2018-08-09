@@ -9,6 +9,65 @@
 
 #include "putget.h"
 
+void
+shmem_waitall(shmem_nb_handle_t *handle, size_t num_handles)
+{
+    size_t i;
+    for(i = 0; i < num_handles; i++){
+        if(handle[i] == NULL) {
+            continue;
+        }
+        if(!(handle[i]->completed)) {
+            shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
+        }
+        handle[i]->completed = 0;
+        ucp_request_free(handle[i]);
+        handle[i] = NULL;
+    }
+}
+
+void 
+shmem_wait(shmem_nb_handle_t handle)
+{
+    if(handle == NULL){
+        return;
+    }
+    while(!(handle->completed)){
+        shmemc_ctx_progress(SHMEM_CTX_DEFAULT);
+    }
+    handle->completed = 0;
+    ucp_request_free(handle);
+    return;
+}
+
+int 
+shmem_test(shmem_nb_handle_t handle)
+{
+    if(handle == NULL) {
+        return 1;
+    }
+    
+    return handle->completed;
+}
+
+int
+shmem_test_any(shmem_nb_handle_t *handle, size_t num_handles)
+{
+    size_t i;
+    for(i = 0; i < num_handles; i++){
+        if(handle[i] == NULL || handle[i]->completed) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+shmem_nb_handle_t 
+shmem_getmem_nb(void *dest, const void *src, size_t nelems, int pe) 
+{
+    return shmemc_ctx_get_nb(SHMEM_CTX_DEFAULT, dest, src, nelems, pe);
+}
+
 #ifdef ENABLE_PSHMEM
 #pragma weak shmem_ctx_float_put = pshmem_ctx_float_put
 #define shmem_ctx_float_put pshmem_ctx_float_put
