@@ -332,9 +332,9 @@ ucx_atomic_fetch_op_nb(ucp_atomic_fetch_op_t uafo,
 }
 
 shmem_nb_handle_t
-shmem_atomic_fetch_add_nb(shmem_ctx_t ctx,
-                          long long *fetch, long long *target,
-                          long long value, int pe){
+shmemc_atomic_fetch_add_nb(shmem_ctx_t ctx,
+                           long long *fetch, long long *target,
+                           long long value, int pe){
     return ucx_atomic_fetch_op_nb(UCP_ATOMIC_FETCH_OP_FADD, ctx,
                                   (uint64_t) target, value, 
                                   sizeof(long long),

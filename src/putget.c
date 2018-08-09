@@ -46,7 +46,12 @@ shmem_test(shmem_nb_handle_t handle)
     if(handle == NULL) {
         return 1;
     }
-    
+    if (handle->completed) {
+        handle->completed = 0;
+        ucp_request_free(handle);
+        handle = NULL;
+        return 1;
+    }
     return handle->completed;
 }
 
@@ -56,6 +61,9 @@ shmem_testany(shmem_nb_handle_t *handle, size_t num_handles)
     size_t i;
     for(i = 0; i < num_handles; i++){
         if(handle[i] == NULL || handle[i]->completed) {
+            handle[i]->completed = 0;
+            ucp_request_free(handle[i]);
+            handle[i] = NULL;
             return i;
         }
     }
