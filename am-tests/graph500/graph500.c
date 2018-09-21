@@ -7,6 +7,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include <signal.h>
 #include <unistd.h>
@@ -51,7 +52,7 @@ typedef struct _send_buf {
     struct _send_buf *next;
 } send_buf;
 
-size_t length_in_bytes;
+size_t length_in_bytes = 0;
 
 typedef struct cb_ctx{
     int my_offset;
@@ -142,7 +143,6 @@ void graph_cb(void *elem, void *args, size_t size, void *ctx) {
     inc_val->my_offset = *inc_val->next_offset;
     char *my_arg = (char *)args;
     __sync_fetch_and_add(inc_val->next_offset, size);
-    
     char *my_buf = (char *) elem + inc_val->my_offset;
     memcpy(my_buf, my_arg, size);
 }
@@ -274,7 +274,7 @@ static inline unsigned check_for_receives(unsigned char **iter_buf,
             const uint64_t parent = get_v1_from_edge(edge);
             
             if(get_owner_pe(to_explore, nglobalverts) != pe){
-                printf("to_explore : %lu me : %d \n", to_explore, pe);
+                printf("%d : buf : %p \n", pe, local_iter_buf);
             }
 
             assert(get_owner_pe(to_explore, nglobalverts) == pe);
@@ -327,18 +327,18 @@ int main(int argc, char **argv) {
     const uint64_t nglobaledges = (uint64_t)(edgefactor << scale);
     const uint64_t nglobalverts = (uint64_t)(((uint64_t)1) << scale);
 
-    // __sighandler_t serr = signal(SIGUSR1, sig_handler);
-    // assert(serr != SIG_ERR);
+     __sighandler_t serr = signal(SIGUSR1, sig_handler);
+     assert(serr != SIG_ERR);
 
-    // int kill_seconds = 120;
-    // pthread_t thread;
-    // const int perr = pthread_create(&thread, NULL, kill_func,
-    //         (void *)&kill_seconds);
-    // assert(perr == 0);
-
+     int kill_seconds = 15;
+     pthread_t thread;
+     const int perr = pthread_create(&thread, NULL, kill_func,
+             (void *)&kill_seconds);
+     assert(perr == 0);
+    
     shmem_init();
     shmem_init_am();
-
+    shmem_fence_am();
 
 
     uint64_t i;
@@ -847,13 +847,13 @@ int main(int argc, char **argv) {
             const unsigned long long end_send = current_time_ns();
             send_time += (end_send - end_accum);
 #endif
-
+            
             shmem_int_sum_to_all(nmessages_global, nmessages_local, 1, 0, 0,
                     npes, pWrk_int, pSync);
             // shmem_int_or_to_all((int *)next_visited, (int *)visited,
             //         visited_ints, 0, 0, npes, pWrk_int2, pSync2);
-            shmem_barrier_all();
-
+            //shmem_fence_am();
+            shmem_fence();
             check_for_receives(&iter_buf, &ndone,
                     nglobalverts, visited, local_min_vertex, next_q,
                     &next_q_size, preds, visited_ints);
@@ -874,6 +874,9 @@ int main(int argc, char **argv) {
             unsigned char *tmp_recv_buf = recv_buf;
             recv_buf = inactive_recv_buf;
             inactive_recv_buf = tmp_recv_buf;
+
+ //           shmem_fence_am();
+//	    printf("%d : recv : %p inactive : %p \n", pe, recv_buf, inactive_recv_buf);
 
             uint64_t *tmp_q = curr_q;
             curr_q = next_q;
